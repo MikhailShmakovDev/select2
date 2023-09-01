@@ -33,3 +33,29 @@
     }
   }
 }
+
+.select2-selection__clearAll {
+  cursor: pointer;
+  position: absolute;
+  right: 6px;
+  top: 4px;
+}
+
+.select2-selection__clearAll.select2-selection__clearAllTag {
+  position: relative;
+  color: #999;
+  cursor: pointer;
+  display: inline-block;
+  font-weight: bold;
+  margin-right: 2px;
+  right: unset;
+  top: unset;
+}
+.select2-selection__clearAll.select2-selection__clearAllTag:hover {
+  position: relative;
+  color: #999;
+  cursor: pointer;
+  display: inline-block;
+  font-weight: bold;
+  margin-right: 2px;
+}

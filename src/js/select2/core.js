@@ -171,19 +171,26 @@ define([
 
 	Select2.prototype._registerDomEvents = function () {
 	    var self = this;
-
+	    const showSelectAll = !!this.options.get('showSelectAll');
+	    
 	    this.$element.on('change.select2', function () {
 		self.dataAdapter.current(function (data) {
 		    self.trigger('selection:update', {
 			data: data
 		    });
-		    self.trigger('results:append', {
-			data: data,
-			query: {_type: 'query'}
-		    });
 		});
 	    });
 
+	   if (showSelectAll) {
+		   this.$element.on('change.select2', function () {
+			self.dataAdapter.current(function (data) {
+			    self.trigger('results:append', {
+				data: data,
+				query: {_type: 'query'}
+			    });
+			});
+		    });
+	   }
 	    this._sync = Utils.bind(this._syncAttributes, this);
 
 	    if (this.$element[0].attachEvent) {

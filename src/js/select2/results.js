@@ -159,8 +159,12 @@ define([
   };
 
   Results.prototype.option = function (data) {
+    const showSelectAll = !!this.options.get('showSelectAll');
     var option = document.createElement('li');
     option.className = 'select2-results__option';
+    if (showSelectAll) {
+	option.className += ' s2checkbox'
+    }
 
     var attrs = {
       'role': 'treeitem',
