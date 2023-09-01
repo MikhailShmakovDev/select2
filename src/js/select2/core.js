@@ -8,7 +8,7 @@ define([
     if ($element.data('select2') != null) {
       $element.data('select2').destroy();
     }
-
+    // my test
     this.$element = $element;
 
     this.id = this._generateId($element);
@@ -169,40 +169,44 @@ define([
     this.results.bind(this, this.$container);
   };
 
-  Select2.prototype._registerDomEvents = function () {
-    var self = this;
+	Select2.prototype._registerDomEvents = function () {
+	    var self = this;
 
-    this.$element.on('change.select2', function () {
-      self.dataAdapter.current(function (data) {
-        self.trigger('selection:update', {
-          data: data
-        });
-      });
-    });
+	    this.$element.on('change.select2', function () {
+		self.dataAdapter.current(function (data) {
+		    self.trigger('selection:update', {
+			data: data
+		    });
+		    self.trigger('results:append', {
+			data: data,
+			query: {_type: 'query'}
+		    });
+		});
+	    });
 
-    this._sync = Utils.bind(this._syncAttributes, this);
+	    this._sync = Utils.bind(this._syncAttributes, this);
 
-    if (this.$element[0].attachEvent) {
-      this.$element[0].attachEvent('onpropertychange', this._sync);
-    }
+	    if (this.$element[0].attachEvent) {
+		this.$element[0].attachEvent('onpropertychange', this._sync);
+	    }
 
-    var observer = window.MutationObserver ||
-      window.WebKitMutationObserver ||
-      window.MozMutationObserver
-    ;
+	    var observer = window.MutationObserver ||
+		window.WebKitMutationObserver ||
+		window.MozMutationObserver
+	    ;
 
-    if (observer != null) {
-      this._observer = new observer(function (mutations) {
-        $.each(mutations, self._sync);
-      });
-      this._observer.observe(this.$element[0], {
-        attributes: true,
-        subtree: false
-      });
-    } else if (this.$element[0].addEventListener) {
-      this.$element[0].addEventListener('DOMAttrModified', self._sync, false);
-    }
-  };
+	    if (observer != null) {
+		this._observer = new observer(function (mutations) {
+		    $.each(mutations, self._sync);
+		});
+		this._observer.observe(this.$element[0], {
+		    attributes: true,
+		    subtree: false
+		});
+	    } else if (this.$element[0].addEventListener) {
+		this.$element[0].addEventListener('DOMAttrModified', self._sync, false);
+	    }
+	};
 
   Select2.prototype._registerDataEvents = function () {
     var self = this;

@@ -164,7 +164,8 @@ define([
 
     var attrs = {
       'role': 'treeitem',
-      'aria-selected': 'false'
+      'aria-selected': 'false',
+      'data-option-id' : data.id
     };
 
     if (data.disabled) {
@@ -445,6 +446,30 @@ define([
         originalEvent: evt,
         data: data
       });
+    });
+    
+    this.$results.on('selectAll', function (evt, data) {
+	console.log('selectAll');
+	console.log(data);
+	self.trigger('select', {
+	    data: data
+	});
+	// for (option of data) {
+	//     self.trigger('select', {
+	//         data: option
+	//     });
+	// }
+    });
+
+    this.$results.on('unselectAll', function (evt) {
+	console.log('unselectAll');
+	//console.log(data);
+	//self.$element.val(null).trigger('change');
+	// for (option of data) {
+	//     self.trigger('unselect', {
+	//         data: option
+	//     });
+	// }
     });
 
     this.$results.on('mouseenter', '.select2-results__option[aria-selected]',

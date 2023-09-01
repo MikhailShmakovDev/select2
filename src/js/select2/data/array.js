@@ -13,19 +13,33 @@ define([
 
   Utils.Extend(ArrayAdapter, SelectAdapter);
 
-  ArrayAdapter.prototype.select = function (data) {
-    var $option = this.$element.find('option').filter(function (i, elm) {
-      return elm.value == data.id.toString();
-    });
+	ArrayAdapter.prototype.select = function (data) {
+	    if ($.isArray(data)) {
+		for(x of data) {
 
-    if ($option.length === 0) {
-      $option = this.option(data);
+		    var $option = this.$element.find('option').filter(function (i, elm) {
+			return elm.value == x.id.toString();
+		    });
 
-      this.addOptions($option);
-    }
+		    if ($option.length === 0) {
+			$option = this.option(x);
 
-    ArrayAdapter.__super__.select.call(this, data);
-  };
+			this.addOptions($option);
+		    }
+		}
+	    } else {
+		var $option = this.$element.find('option').filter(function (i, elm) {
+		    return elm.value == data.id.toString();
+		});
+
+		if ($option.length === 0) {
+		    $option = this.option(data);
+
+		    this.addOptions($option);
+		}
+	    }
+	    ArrayAdapter.__super__.select.call(this, data);
+	};
 
   ArrayAdapter.prototype.convertToOptions = function (data) {
     var self = this;

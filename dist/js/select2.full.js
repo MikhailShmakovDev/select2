@@ -30,13 +30,11 @@
 var S2;(function () { if (!S2 || !S2.requirejs) {
 if (!S2) { S2 = {}; } else { require = S2; }
 /**
- * @license almond 0.3.1 Copyright (c) 2011-2014, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/almond for details
+ * @license almond 0.3.3 Copyright jQuery Foundation and other contributors.
+ * Released under MIT license, http://github.com/requirejs/almond/LICENSE
  */
 //Going sloppy to avoid 'use strict' string cost, but strict practices should
 //be followed.
-/*jslint sloppy: true */
 /*global setTimeout: false */
 
 var requirejs, require, define;
@@ -64,60 +62,58 @@ var requirejs, require, define;
      */
     function normalize(name, baseName) {
         var nameParts, nameSegment, mapValue, foundMap, lastIndex,
-            foundI, foundStarMap, starI, i, j, part,
+            foundI, foundStarMap, starI, i, j, part, normalizedBaseParts,
             baseParts = baseName && baseName.split("/"),
             map = config.map,
             starMap = (map && map['*']) || {};
 
         //Adjust any relative paths.
-        if (name && name.charAt(0) === ".") {
-            //If have a base name, try to normalize against it,
-            //otherwise, assume it is a top-level require that will
-            //be relative to baseUrl in the end.
-            if (baseName) {
-                name = name.split('/');
-                lastIndex = name.length - 1;
+        if (name) {
+            name = name.split('/');
+            lastIndex = name.length - 1;
 
-                // Node .js allowance:
-                if (config.nodeIdCompat && jsSuffixRegExp.test(name[lastIndex])) {
-                    name[lastIndex] = name[lastIndex].replace(jsSuffixRegExp, '');
-                }
+            // If wanting node ID compatibility, strip .js from end
+            // of IDs. Have to do this here, and not in nameToUrl
+            // because node allows either .js or non .js to map
+            // to same file.
+            if (config.nodeIdCompat && jsSuffixRegExp.test(name[lastIndex])) {
+                name[lastIndex] = name[lastIndex].replace(jsSuffixRegExp, '');
+            }
 
-                //Lop off the last part of baseParts, so that . matches the
-                //"directory" and not name of the baseName's module. For instance,
-                //baseName of "one/two/three", maps to "one/two/three.js", but we
-                //want the directory, "one/two" for this normalization.
-                name = baseParts.slice(0, baseParts.length - 1).concat(name);
+            // Starts with a '.' so need the baseName
+            if (name[0].charAt(0) === '.' && baseParts) {
+                //Convert baseName to array, and lop off the last part,
+                //so that . matches that 'directory' and not name of the baseName's
+                //module. For instance, baseName of 'one/two/three', maps to
+                //'one/two/three.js', but we want the directory, 'one/two' for
+                //this normalization.
+                normalizedBaseParts = baseParts.slice(0, baseParts.length - 1);
+                name = normalizedBaseParts.concat(name);
+            }
 
-                //start trimDots
-                for (i = 0; i < name.length; i += 1) {
-                    part = name[i];
-                    if (part === ".") {
-                        name.splice(i, 1);
-                        i -= 1;
-                    } else if (part === "..") {
-                        if (i === 1 && (name[2] === '..' || name[0] === '..')) {
-                            //End of the line. Keep at least one non-dot
-                            //path segment at the front so it can be mapped
-                            //correctly to disk. Otherwise, there is likely
-                            //no path mapping for a path starting with '..'.
-                            //This can still fail, but catches the most reasonable
-                            //uses of ..
-                            break;
-                        } else if (i > 0) {
-                            name.splice(i - 1, 2);
-                            i -= 2;
-                        }
+            //start trimDots
+            for (i = 0; i < name.length; i++) {
+                part = name[i];
+                if (part === '.') {
+                    name.splice(i, 1);
+                    i -= 1;
+                } else if (part === '..') {
+                    // If at the start, or previous value is still ..,
+                    // keep them so that when converted to a path it may
+                    // still work when converted to a path, even though
+                    // as an ID it is less than ideal. In larger point
+                    // releases, may be better to just kick out an error.
+                    if (i === 0 || (i === 1 && name[2] === '..') || name[i - 1] === '..') {
+                        continue;
+                    } else if (i > 0) {
+                        name.splice(i - 1, 2);
+                        i -= 2;
                     }
                 }
-                //end trimDots
-
-                name = name.join("/");
-            } else if (name.indexOf('./') === 0) {
-                // No baseName, so this is ID is resolved relative
-                // to baseUrl, pull off the leading dot.
-                name = name.substring(2);
             }
+            //end trimDots
+
+            name = name.join('/');
         }
 
         //Apply map config if available.
@@ -230,32 +226,39 @@ var requirejs, require, define;
         return [prefix, name];
     }
 
+    //Creates a parts array for a relName where first part is plugin ID,
+    //second part is resource ID. Assumes relName has already been normalized.
+    function makeRelParts(relName) {
+        return relName ? splitPrefix(relName) : [];
+    }
+
     /**
      * Makes a name map, normalizing the name, and using a plugin
      * for normalization if necessary. Grabs a ref to plugin
      * too, as an optimization.
      */
-    makeMap = function (name, relName) {
+    makeMap = function (name, relParts) {
         var plugin,
             parts = splitPrefix(name),
-            prefix = parts[0];
+            prefix = parts[0],
+            relResourceName = relParts[1];
 
         name = parts[1];
 
         if (prefix) {
-            prefix = normalize(prefix, relName);
+            prefix = normalize(prefix, relResourceName);
             plugin = callDep(prefix);
         }
 
         //Normalize according
         if (prefix) {
             if (plugin && plugin.normalize) {
-                name = plugin.normalize(name, makeNormalize(relName));
+                name = plugin.normalize(name, makeNormalize(relResourceName));
             } else {
-                name = normalize(name, relName);
+                name = normalize(name, relResourceName);
             }
         } else {
-            name = normalize(name, relName);
+            name = normalize(name, relResourceName);
             parts = splitPrefix(name);
             prefix = parts[0];
             name = parts[1];
@@ -302,13 +305,14 @@ var requirejs, require, define;
     };
 
     main = function (name, deps, callback, relName) {
-        var cjsModule, depName, ret, map, i,
+        var cjsModule, depName, ret, map, i, relParts,
             args = [],
             callbackType = typeof callback,
             usingExports;
 
         //Use name if no relName
         relName = relName || name;
+        relParts = makeRelParts(relName);
 
         //Call the callback to define the module, if necessary.
         if (callbackType === 'undefined' || callbackType === 'function') {
@@ -317,7 +321,7 @@ var requirejs, require, define;
             //Default to [require, exports, module] if no deps
             deps = !deps.length && callback.length ? ['require', 'exports', 'module'] : deps;
             for (i = 0; i < deps.length; i += 1) {
-                map = makeMap(deps[i], relName);
+                map = makeMap(deps[i], relParts);
                 depName = map.f;
 
                 //Fast path CommonJS standard dependencies.
@@ -373,7 +377,7 @@ var requirejs, require, define;
             //deps arg is the module name, and second arg (if passed)
             //is just the relName.
             //Normalize module name, if it contains . or ..
-            return callDep(makeMap(deps, callback).f);
+            return callDep(makeMap(deps, makeRelParts(callback)).f);
         } else if (!deps.splice) {
             //deps is a config object, not an array.
             config = deps;
@@ -909,7 +913,8 @@ S2.define('select2/results',[
 
     var attrs = {
       'role': 'treeitem',
-      'aria-selected': 'false'
+      'aria-selected': 'false',
+      'data-option-id' : data.id
     };
 
     if (data.disabled) {
@@ -1190,6 +1195,30 @@ S2.define('select2/results',[
         originalEvent: evt,
         data: data
       });
+    });
+    
+    this.$results.on('selectAll', function (evt, data) {
+	console.log('selectAll');
+	console.log(data);
+	self.trigger('select', {
+	    data: data
+	});
+	// for (option of data) {
+	//     self.trigger('select', {
+	//         data: option
+	//     });
+	// }
+    });
+
+    this.$results.on('unselectAll', function (evt) {
+	console.log('unselectAll');
+	//console.log(data);
+	//self.$element.val(null).trigger('change');
+	// for (option of data) {
+	//     self.trigger('unselect', {
+	//         data: option
+	//     });
+	// }
     });
 
     this.$results.on('mouseenter', '.select2-results__option[aria-selected]',
@@ -1550,17 +1579,34 @@ S2.define('select2/selection/multiple',[
 
   Utils.Extend(MultipleSelection, BaseSelection);
 
-  MultipleSelection.prototype.render = function () {
-    var $selection = MultipleSelection.__super__.render.call(this);
+	MultipleSelection.prototype.render = function () {
+	    var $selection = MultipleSelection.__super__.render.call(this);
+	    const showOther = !!this.options.get('showOther');
+	    const maxRenderedTagCount = this.options.get('maxRenderedTagCount') ? this.options.get('maxRenderedTagCount') -1 : 4;
 
-    $selection.addClass('select2-selection--multiple');
+	    $selection.addClass('select2-selection--multiple');
 
-    $selection.html(
-      '<ul class="select2-selection__rendered"></ul>'
-    );
+	    if (showOther) {
+		if(this.$element.find('option').length > maxRenderedTagCount) {
+		    $selection.html(
+			'<span class="select2-selection__clearAll">✖</span>' +
+			'<ul class="select2-selection__rendered"></ul>'
+		    );
+		} else {
+		    $selection.html(
+			'<span class="select2-selection__clearAll hidden">✖</span>' +
+			'<ul class="select2-selection__rendered"></ul>'
+		    );
+		}
+	    } else {
+		$selection.html(
+		    '<ul class="select2-selection__rendered"></ul>'
+		);
+	    }
 
-    return $selection;
-  };
+
+	    return $selection;
+	};
 
   MultipleSelection.prototype.bind = function (container, $container) {
     var self = this;
@@ -1593,6 +1639,16 @@ S2.define('select2/selection/multiple',[
         });
       }
     );
+
+	this.$selection.on(
+	'click',
+	'.select2-selection__clearAll',
+	function (evt) {
+	    evt.preventDefault()
+	    self.$element.val(null).trigger('change');
+	    $(this).addClass('hidden');
+	}
+	);
   };
 
   MultipleSelection.prototype.clear = function () {
@@ -1618,33 +1674,62 @@ S2.define('select2/selection/multiple',[
     return $container;
   };
 
-  MultipleSelection.prototype.update = function (data) {
-    this.clear();
+	MultipleSelection.prototype.update = function (data) {
+	    const maxRenderedTagCount = this.options.get('maxRenderedTagCount') ? this.options.get('maxRenderedTagCount') -1 : false;
+	    const showOther = !!this.options.get('showOther');
+	    this.clear();
 
-    if (data.length === 0) {
-      return;
-    }
+	    if (data.length === 0) {
+		return;
+	    }
 
-    var $selections = [];
+	    var $selections = [];
 
-    for (var d = 0; d < data.length; d++) {
-      var selection = data[d];
+	    for (var d = 0; d < data.length; d++) {
+		if (maxRenderedTagCount && d > maxRenderedTagCount) {
+		    break;
+		}
+		var selection = data[d];
 
-      var $selection = this.selectionContainer();
-      var formatted = this.display(selection, $selection);
+		var $selection = this.selectionContainer();
+		var formatted = this.display(selection, $selection);
 
-      $selection.append(formatted);
-      $selection.prop('title', selection.title || selection.text);
+		$selection.append(formatted);
+		$selection.prop('title', selection.title || selection.text);
 
-      $selection.data('data', selection);
+		$selection.data('data', selection);
 
-      $selections.push($selection);
-    }
+		$selections.push($selection);
+	    }
 
-    var $rendered = this.$selection.find('.select2-selection__rendered');
+	    var $rendered = this.$selection.find('.select2-selection__rendered');
 
-    Utils.appendMany($rendered, $selections);
-  };
+
+	    // if (showOther) {
+	    //
+	    // }
+
+	    if (maxRenderedTagCount && data.length > maxRenderedTagCount) {
+		let more = data.length // - maxRenderedTagCount;
+		if (showOther) {
+		    Utils.appendMany($rendered, $selections);
+		    more = more - maxRenderedTagCount - 1;
+		    $rendered.append(
+			`<li class="select2-selection__choice select2-selection__choice--more" title="More">+${more} others</li>`
+			//     `<li class="select2-selection__choice" title="Selected"><span class="select2-selection__clearAllTag select2-selection__clearAll" >×</span>${more} selected</li>`
+		    );
+		} else {
+		    $rendered.append(
+			//    `<li class="select2-selection__choice select2-selection__choice--more select2-selection__clearAll" title="More">✖ ${more} selected</li>`
+			`<li class="select2-selection__choice" title="Selected"><span class="select2-selection__clearAllTag select2-selection__clearAll" >×</span>${more} selected</li>`
+		    );
+		}
+		this.$selection.find('.select2-selection__clearAll').removeClass('hidden');
+	    } else {
+		this.$selection.find('.select2-selection__clearAll').addClass('hidden');
+		Utils.appendMany($rendered, $selections);
+	    }
+	};
 
   return MultipleSelection;
 });
@@ -2995,7 +3080,7 @@ S2.define('select2/data/base',[
 S2.define('select2/data/select',[
   './base',
   '../utils',
-  'jquery'
+ 'jquery'
 ], function (BaseAdapter, Utils, $) {
   function SelectAdapter ($element, options) {
     this.$element = $element;
@@ -3021,45 +3106,77 @@ S2.define('select2/data/select',[
     callback(data);
   };
 
-  SelectAdapter.prototype.select = function (data) {
-    var self = this;
+	SelectAdapter.prototype.select = function (data) {
+	    var self = this;
+	    if ($.isArray(data)) {
+		if (this.$element.prop('multiple')) {
+		    this.current(function (currentData) {
+			var val = [];
 
-    data.selected = true;
+			//data = [data];
+			data.push.apply(data, currentData);
 
-    // If data.element is a DOM node, use it instead
-    if ($(data.element).is('option')) {
-      data.element.selected = true;
+			for (var d = 0; d < data.length; d++) {
+			    var id = data[d].id;
 
-      this.$element.trigger('change');
+			    if ($.inArray(id, val) === -1) {
+				val.push(id);
+			    }
+			}
 
-      return;
-    }
+			self.$element.val(val);
+			self.$element.trigger('change');
+		    });
+		} else {
+		    for (x of data) {
+			var val = x.id;
 
-    if (this.$element.prop('multiple')) {
-      this.current(function (currentData) {
-        var val = [];
+			this.$element.val(val);
+			this.$element.trigger('change');
+		    }
+		}
 
-        data = [data];
-        data.push.apply(data, currentData);
+		// for (dataElement in data) {
+		// }
+		// this.$element.trigger('change');
+	    } else {
+		data.selected = true;
 
-        for (var d = 0; d < data.length; d++) {
-          var id = data[d].id;
+		// If data.element is a DOM node, use it instead
+		if ($(data.element).is('option')) {
+		    data.element.selected = true;
 
-          if ($.inArray(id, val) === -1) {
-            val.push(id);
-          }
-        }
+		    this.$element.trigger('change');
 
-        self.$element.val(val);
-        self.$element.trigger('change');
-      });
-    } else {
-      var val = data.id;
+		    return;
+		}
 
-      this.$element.val(val);
-      this.$element.trigger('change');
-    }
-  };
+		if (this.$element.prop('multiple')) {
+		    this.current(function (currentData) {
+			var val = [];
+
+			data = [data];
+			data.push.apply(data, currentData);
+
+			for (var d = 0; d < data.length; d++) {
+			    var id = data[d].id;
+
+			    if ($.inArray(id, val) === -1) {
+				val.push(id);
+			    }
+			}
+
+			self.$element.val(val);
+			self.$element.trigger('change');
+		    });
+		} else {
+		    var val = data.id;
+
+		    this.$element.val(val);
+		    this.$element.trigger('change');
+		}
+	    }
+	};
 
   SelectAdapter.prototype.unselect = function (data) {
     var self = this;
@@ -3293,19 +3410,33 @@ S2.define('select2/data/array',[
 
   Utils.Extend(ArrayAdapter, SelectAdapter);
 
-  ArrayAdapter.prototype.select = function (data) {
-    var $option = this.$element.find('option').filter(function (i, elm) {
-      return elm.value == data.id.toString();
-    });
+	ArrayAdapter.prototype.select = function (data) {
+	    if ($.isArray(data)) {
+		for(x of data) {
 
-    if ($option.length === 0) {
-      $option = this.option(data);
+		    var $option = this.$element.find('option').filter(function (i, elm) {
+			return elm.value == x.id.toString();
+		    });
 
-      this.addOptions($option);
-    }
+		    if ($option.length === 0) {
+			$option = this.option(x);
 
-    ArrayAdapter.__super__.select.call(this, data);
-  };
+			this.addOptions($option);
+		    }
+		}
+	    } else {
+		var $option = this.$element.find('option').filter(function (i, elm) {
+		    return elm.value == data.id.toString();
+		});
+
+		if ($option.length === 0) {
+		    $option = this.option(data);
+
+		    this.addOptions($option);
+		}
+	    }
+	    ArrayAdapter.__super__.select.call(this, data);
+	};
 
   ArrayAdapter.prototype.convertToOptions = function (data) {
     var self = this;
@@ -3782,23 +3913,123 @@ S2.define('select2/dropdown',[
 
   Utils.Extend(Dropdown, Utils.Observable);
 
-  Dropdown.prototype.render = function () {
-    var $dropdown = $(
-      '<span class="select2-dropdown">' +
-        '<span class="select2-results"></span>' +
-      '</span>'
-    );
+	Dropdown.prototype.render = function () {
+	    // TODO: Unrealiable selector
+	    const select2id = $(this.$element[0]).attr('id');
+	    const showSelectAll = !!this.options.get('showSelectAll');
 
-    $dropdown.attr('dir', this.options.get('dir'));
+	    let selectAllHTML = '';
+	    if (showSelectAll) {
+		selectAllHTML = '<div class="selectAll">' +
+		    `<span data-s2-id="${select2id}" class="selectAll selectAll--selectable">Select All</span>` +
+		    '</div>';
+	    }
 
-    this.$dropdown = $dropdown;
+	    var $dropdown = $(
+		'<span class="select2-dropdown">' +
+		'<span class="select2-before__slot">' + selectAllHTML + '</span>' +
+		'<span class="select2-results"></span>' +
+		'<span class="select2-afer__slot"></span>' +
+		'</span>'
+	    );
 
-    return $dropdown;
-  };
+	    $dropdown.attr('dir', this.options.get('dir'));
 
-  Dropdown.prototype.bind = function () {
-    // Should be implemented in subclasses
-  };
+	    this.$dropdown = $dropdown;
+
+	    return $dropdown;
+	};
+
+	Dropdown.prototype.bind = function () {
+	    const showSelectAll = !!this.options.get('showSelectAll');
+	    if (showSelectAll) {
+		this.$dropdown.on('mouseup', '.select2-before__slot span.selectAll',
+		    function (evt) {
+			evt.preventDefault();
+			// use checkbox status instead
+			const s2id = $(this).data('s2-id');
+			const $s2 = $(`select#${s2id}`);
+			const s2 = document.querySelector(`select#${s2id}`);
+			const selectedOptions = [...s2.selectedOptions].map(option => option.value);
+			const optionSelector = document.getElementById(`select2-${s2id}-results`);
+			const optionsWithData = [...optionSelector.childNodes].map(option => {
+			    return $(option).data('data');
+			});
+			//console.log(optionsWithData);
+			const $results = $(`ul#select2-${s2id}-results.select2-results__options`);
+
+			// console.log('Select All is clicked');
+			console.log('selectedOptions', selectedOptions);
+			console.log('optionsWithData', optionsWithData);
+
+			// use checkbox status instead
+			let allSelected = this.classList.contains('selectAll--selected');
+
+			if (allSelected) {
+			    console.log('unselect all');
+			    $s2.val(null).trigger('change.select2');
+			    $(this).addClass('selectAll--selectable');
+			    $(this).removeClass('selectAll--selected');
+			    //$results.trigger('unselectAll', [optionsWithData]);
+			} else {
+			    console.log('select all');
+			    $results.trigger('selectAll', [optionsWithData]);
+			}
+			$s2.trigger('change.select2');
+		    });
+
+		// TODO: bind on select / deselect events instead
+		const s2id = this.$dropdown.find('.select2-before__slot span.selectAll').data('s2-id');
+		const $s2 = $(`select#${s2id}`);
+
+		// this.on('results:all', function (params) {
+		//     console.log('results:all');
+		// });
+		$s2.on('change.select2', function (evt) {
+		    console.log('s2 change');
+		    const s2id = $(this).attr('id');
+		    const s2 = this;
+		    const selectedOptions = [...s2.selectedOptions].map(option => option.value);
+		    const optionSelector = document.getElementById(`select2-${s2id}-results`);
+		    if (!optionSelector) {
+			return;
+		    }
+		    const optionsWithData = [...optionSelector.childNodes].map(option => {
+			return $(option).data('data');
+		    });
+
+		    let allSelected = true;
+		    for (let i = 0; i < optionsWithData.length; i++) {
+			if (!selectedOptions.includes(optionsWithData[i].id)) {
+			    allSelected = false;
+			    break;
+			}
+			// if (optionsWithData[i].selected === undefined) {
+			//     if (!selectedOptions.includes(optionsWithData[i].id)) {
+			//         allSelected = false;
+			//         break;
+			//     }
+			// } else {
+			//     if (optionsWithData[i].selected === false) {
+			//         allSelected = false;
+			//         break;
+			//     }
+			// }
+		    }
+
+		    $selectAllButton = $('.select2-dropdown span.selectAll');
+		    if (allSelected) {
+			console.log('All Selected');
+			$selectAllButton.addClass('selectAll--selected');
+			$selectAllButton.removeClass('selectAll--selectable');
+		    } else {
+			console.log('Not All Selected');
+			$selectAllButton.removeClass('selectAll--selected');
+			$selectAllButton.addClass('selectAll--selectable');
+		    }
+		});
+	    }
+	};
 
   Dropdown.prototype.position = function ($dropdown, $container) {
     // Should be implmented in subclasses
@@ -4947,7 +5178,7 @@ S2.define('select2/core',[
     if ($element.data('select2') != null) {
       $element.data('select2').destroy();
     }
-
+    // my test
     this.$element = $element;
 
     this.id = this._generateId($element);
@@ -5108,40 +5339,44 @@ S2.define('select2/core',[
     this.results.bind(this, this.$container);
   };
 
-  Select2.prototype._registerDomEvents = function () {
-    var self = this;
+	Select2.prototype._registerDomEvents = function () {
+	    var self = this;
 
-    this.$element.on('change.select2', function () {
-      self.dataAdapter.current(function (data) {
-        self.trigger('selection:update', {
-          data: data
-        });
-      });
-    });
+	    this.$element.on('change.select2', function () {
+		self.dataAdapter.current(function (data) {
+		    self.trigger('selection:update', {
+			data: data
+		    });
+		    self.trigger('results:append', {
+			data: data,
+			query: {_type: 'query'}
+		    });
+		});
+	    });
 
-    this._sync = Utils.bind(this._syncAttributes, this);
+	    this._sync = Utils.bind(this._syncAttributes, this);
 
-    if (this.$element[0].attachEvent) {
-      this.$element[0].attachEvent('onpropertychange', this._sync);
-    }
+	    if (this.$element[0].attachEvent) {
+		this.$element[0].attachEvent('onpropertychange', this._sync);
+	    }
 
-    var observer = window.MutationObserver ||
-      window.WebKitMutationObserver ||
-      window.MozMutationObserver
-    ;
+	    var observer = window.MutationObserver ||
+		window.WebKitMutationObserver ||
+		window.MozMutationObserver
+	    ;
 
-    if (observer != null) {
-      this._observer = new observer(function (mutations) {
-        $.each(mutations, self._sync);
-      });
-      this._observer.observe(this.$element[0], {
-        attributes: true,
-        subtree: false
-      });
-    } else if (this.$element[0].addEventListener) {
-      this.$element[0].addEventListener('DOMAttrModified', self._sync, false);
-    }
-  };
+	    if (observer != null) {
+		this._observer = new observer(function (mutations) {
+		    $.each(mutations, self._sync);
+		});
+		this._observer.observe(this.$element[0], {
+		    attributes: true,
+		    subtree: false
+		});
+	    } else if (this.$element[0].addEventListener) {
+		this.$element[0].addEventListener('DOMAttrModified', self._sync, false);
+	    }
+	};
 
   Select2.prototype._registerDataEvents = function () {
     var self = this;

@@ -9,17 +9,34 @@ define([
 
   Utils.Extend(MultipleSelection, BaseSelection);
 
-  MultipleSelection.prototype.render = function () {
-    var $selection = MultipleSelection.__super__.render.call(this);
+	MultipleSelection.prototype.render = function () {
+	    var $selection = MultipleSelection.__super__.render.call(this);
+	    const showOther = !!this.options.get('showOther');
+	    const maxRenderedTagCount = this.options.get('maxRenderedTagCount') ? this.options.get('maxRenderedTagCount') -1 : 4;
 
-    $selection.addClass('select2-selection--multiple');
+	    $selection.addClass('select2-selection--multiple');
 
-    $selection.html(
-      '<ul class="select2-selection__rendered"></ul>'
-    );
+	    if (showOther) {
+		if(this.$element.find('option').length > maxRenderedTagCount) {
+		    $selection.html(
+			'<span class="select2-selection__clearAll">✖</span>' +
+			'<ul class="select2-selection__rendered"></ul>'
+		    );
+		} else {
+		    $selection.html(
+			'<span class="select2-selection__clearAll hidden">✖</span>' +
+			'<ul class="select2-selection__rendered"></ul>'
+		    );
+		}
+	    } else {
+		$selection.html(
+		    '<ul class="select2-selection__rendered"></ul>'
+		);
+	    }
 
-    return $selection;
-  };
+
+	    return $selection;
+	};
 
   MultipleSelection.prototype.bind = function (container, $container) {
     var self = this;
@@ -52,6 +69,16 @@ define([
         });
       }
     );
+
+	this.$selection.on(
+	'click',
+	'.select2-selection__clearAll',
+	function (evt) {
+	    evt.preventDefault()
+	    self.$element.val(null).trigger('change');
+	    $(this).addClass('hidden');
+	}
+	);
   };
 
   MultipleSelection.prototype.clear = function () {
@@ -77,33 +104,62 @@ define([
     return $container;
   };
 
-  MultipleSelection.prototype.update = function (data) {
-    this.clear();
+	MultipleSelection.prototype.update = function (data) {
+	    const maxRenderedTagCount = this.options.get('maxRenderedTagCount') ? this.options.get('maxRenderedTagCount') -1 : false;
+	    const showOther = !!this.options.get('showOther');
+	    this.clear();
 
-    if (data.length === 0) {
-      return;
-    }
+	    if (data.length === 0) {
+		return;
+	    }
 
-    var $selections = [];
+	    var $selections = [];
 
-    for (var d = 0; d < data.length; d++) {
-      var selection = data[d];
+	    for (var d = 0; d < data.length; d++) {
+		if (maxRenderedTagCount && d > maxRenderedTagCount) {
+		    break;
+		}
+		var selection = data[d];
 
-      var $selection = this.selectionContainer();
-      var formatted = this.display(selection, $selection);
+		var $selection = this.selectionContainer();
+		var formatted = this.display(selection, $selection);
 
-      $selection.append(formatted);
-      $selection.prop('title', selection.title || selection.text);
+		$selection.append(formatted);
+		$selection.prop('title', selection.title || selection.text);
 
-      $selection.data('data', selection);
+		$selection.data('data', selection);
 
-      $selections.push($selection);
-    }
+		$selections.push($selection);
+	    }
 
-    var $rendered = this.$selection.find('.select2-selection__rendered');
+	    var $rendered = this.$selection.find('.select2-selection__rendered');
 
-    Utils.appendMany($rendered, $selections);
-  };
+
+	    // if (showOther) {
+	    //
+	    // }
+
+	    if (maxRenderedTagCount && data.length > maxRenderedTagCount) {
+		let more = data.length // - maxRenderedTagCount;
+		if (showOther) {
+		    Utils.appendMany($rendered, $selections);
+		    more = more - maxRenderedTagCount - 1;
+		    $rendered.append(
+			`<li class="select2-selection__choice select2-selection__choice--more" title="More">+${more} others</li>`
+			//     `<li class="select2-selection__choice" title="Selected"><span class="select2-selection__clearAllTag select2-selection__clearAll" >×</span>${more} selected</li>`
+		    );
+		} else {
+		    $rendered.append(
+			//    `<li class="select2-selection__choice select2-selection__choice--more select2-selection__clearAll" title="More">✖ ${more} selected</li>`
+			`<li class="select2-selection__choice" title="Selected"><span class="select2-selection__clearAllTag select2-selection__clearAll" >×</span>${more} selected</li>`
+		    );
+		}
+		this.$selection.find('.select2-selection__clearAll').removeClass('hidden');
+	    } else {
+		this.$selection.find('.select2-selection__clearAll').addClass('hidden');
+		Utils.appendMany($rendered, $selections);
+	    }
+	};
 
   return MultipleSelection;
 });

@@ -1,7 +1,7 @@
 define([
   './base',
   '../utils',
-  'jquery'
+ 'jquery'
 ], function (BaseAdapter, Utils, $) {
   function SelectAdapter ($element, options) {
     this.$element = $element;
@@ -27,45 +27,77 @@ define([
     callback(data);
   };
 
-  SelectAdapter.prototype.select = function (data) {
-    var self = this;
+	SelectAdapter.prototype.select = function (data) {
+	    var self = this;
+	    if ($.isArray(data)) {
+		if (this.$element.prop('multiple')) {
+		    this.current(function (currentData) {
+			var val = [];
 
-    data.selected = true;
+			//data = [data];
+			data.push.apply(data, currentData);
 
-    // If data.element is a DOM node, use it instead
-    if ($(data.element).is('option')) {
-      data.element.selected = true;
+			for (var d = 0; d < data.length; d++) {
+			    var id = data[d].id;
 
-      this.$element.trigger('change');
+			    if ($.inArray(id, val) === -1) {
+				val.push(id);
+			    }
+			}
 
-      return;
-    }
+			self.$element.val(val);
+			self.$element.trigger('change');
+		    });
+		} else {
+		    for (x of data) {
+			var val = x.id;
 
-    if (this.$element.prop('multiple')) {
-      this.current(function (currentData) {
-        var val = [];
+			this.$element.val(val);
+			this.$element.trigger('change');
+		    }
+		}
 
-        data = [data];
-        data.push.apply(data, currentData);
+		// for (dataElement in data) {
+		// }
+		// this.$element.trigger('change');
+	    } else {
+		data.selected = true;
 
-        for (var d = 0; d < data.length; d++) {
-          var id = data[d].id;
+		// If data.element is a DOM node, use it instead
+		if ($(data.element).is('option')) {
+		    data.element.selected = true;
 
-          if ($.inArray(id, val) === -1) {
-            val.push(id);
-          }
-        }
+		    this.$element.trigger('change');
 
-        self.$element.val(val);
-        self.$element.trigger('change');
-      });
-    } else {
-      var val = data.id;
+		    return;
+		}
 
-      this.$element.val(val);
-      this.$element.trigger('change');
-    }
-  };
+		if (this.$element.prop('multiple')) {
+		    this.current(function (currentData) {
+			var val = [];
+
+			data = [data];
+			data.push.apply(data, currentData);
+
+			for (var d = 0; d < data.length; d++) {
+			    var id = data[d].id;
+
+			    if ($.inArray(id, val) === -1) {
+				val.push(id);
+			    }
+			}
+
+			self.$element.val(val);
+			self.$element.trigger('change');
+		    });
+		} else {
+		    var val = data.id;
+
+		    this.$element.val(val);
+		    this.$element.trigger('change');
+		}
+	    }
+	};
 
   SelectAdapter.prototype.unselect = function (data) {
     var self = this;
