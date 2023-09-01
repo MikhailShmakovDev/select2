@@ -15,9 +15,10 @@ define([
 	    // TODO: Unrealiable selector
 	    const select2id = $(this.$element[0]).attr('id');
 	    const showSelectAll = !!this.options.get('showSelectAll');
+	    const multiple = !!this.options.get('multiple');
 
 	    let selectAllHTML = '';
-	    if (showSelectAll) {
+	    if (multiple && showSelectAll) {
 		selectAllHTML = '<div class="selectAll">' +
 		    `<span data-s2-id="${select2id}" class="selectAll selectAll--selectable">Select All</span>` +
 		    '</div>';
@@ -40,7 +41,8 @@ define([
 
 	Dropdown.prototype.bind = function () {
 	    const showSelectAll = !!this.options.get('showSelectAll');
-	    if (showSelectAll) {
+	    const multiple = !!this.options.get('multiple');
+	    if (multiple && showSelectAll) {
 		this.$dropdown.on('mouseup', '.select2-before__slot span.selectAll',
 		    function (evt) {
 			evt.preventDefault();

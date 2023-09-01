@@ -908,7 +908,7 @@ S2.define('select2/results',[
   };
 
   Results.prototype.option = function (data) {
-    const showSelectAll = !!this.options.get('showSelectAll');
+    const showSelectAll = !!this.options.get('showSelectAll') && !!this.options.get('multiple');
     var option = document.createElement('li');
     option.className = 'select2-results__option';
     if (showSelectAll) {
@@ -1202,8 +1202,6 @@ S2.define('select2/results',[
     });
     
     this.$results.on('selectAll', function (evt, data) {
-	console.log('selectAll');
-	console.log(data);
 	self.trigger('select', {
 	    data: data
 	});
@@ -3921,9 +3919,10 @@ S2.define('select2/dropdown',[
 	    // TODO: Unrealiable selector
 	    const select2id = $(this.$element[0]).attr('id');
 	    const showSelectAll = !!this.options.get('showSelectAll');
+	    const multiple = !!this.options.get('multiple');
 
 	    let selectAllHTML = '';
-	    if (showSelectAll) {
+	    if (multiple && showSelectAll) {
 		selectAllHTML = '<div class="selectAll">' +
 		    `<span data-s2-id="${select2id}" class="selectAll selectAll--selectable">Select All</span>` +
 		    '</div>';
@@ -3946,7 +3945,8 @@ S2.define('select2/dropdown',[
 
 	Dropdown.prototype.bind = function () {
 	    const showSelectAll = !!this.options.get('showSelectAll');
-	    if (showSelectAll) {
+	    const multiple = !!this.options.get('multiple');
+	    if (multiple && showSelectAll) {
 		this.$dropdown.on('mouseup', '.select2-before__slot span.selectAll',
 		    function (evt) {
 			evt.preventDefault();
@@ -5346,6 +5346,7 @@ S2.define('select2/core',[
 	Select2.prototype._registerDomEvents = function () {
 	    var self = this;
 	    const showSelectAll = !!this.options.get('showSelectAll');
+	    const multiple = !!this.options.get('multiple');
 	    
 	    this.$element.on('change.select2', function () {
 		self.dataAdapter.current(function (data) {
@@ -5355,7 +5356,7 @@ S2.define('select2/core',[
 		});
 	    });
 
-	   if (showSelectAll) {
+	   if (multiple && showSelectAll) {
 		   this.$element.on('change.select2', function () {
 			self.dataAdapter.current(function (data) {
 			    self.trigger('results:append', {

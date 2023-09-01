@@ -159,7 +159,7 @@ define([
   };
 
   Results.prototype.option = function (data) {
-    const showSelectAll = !!this.options.get('showSelectAll');
+    const showSelectAll = !!this.options.get('showSelectAll') && !!this.options.get('multiple');
     var option = document.createElement('li');
     option.className = 'select2-results__option';
     if (showSelectAll) {
@@ -453,8 +453,6 @@ define([
     });
     
     this.$results.on('selectAll', function (evt, data) {
-	console.log('selectAll');
-	console.log(data);
 	self.trigger('select', {
 	    data: data
 	});

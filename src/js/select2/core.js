@@ -172,6 +172,7 @@ define([
 	Select2.prototype._registerDomEvents = function () {
 	    var self = this;
 	    const showSelectAll = !!this.options.get('showSelectAll');
+	    const multiple = !!this.options.get('multiple');
 	    
 	    this.$element.on('change.select2', function () {
 		self.dataAdapter.current(function (data) {
@@ -181,7 +182,7 @@ define([
 		});
 	    });
 
-	   if (showSelectAll) {
+	   if (multiple && showSelectAll) {
 		   this.$element.on('change.select2', function () {
 			self.dataAdapter.current(function (data) {
 			    self.trigger('results:append', {
