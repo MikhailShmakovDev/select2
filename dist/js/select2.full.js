@@ -4153,6 +4153,7 @@ S2.define('select2/dropdown/hidePlaceholder',[
   }
 
   HidePlaceholder.prototype.append = function (decorated, data) {
+    data.results = data.results ? data.results : data;
     data.results = this.removePlaceholder(data.results);
 
     decorated.call(this, data);
@@ -5345,27 +5346,30 @@ S2.define('select2/core',[
 
 	Select2.prototype._registerDomEvents = function () {
 	    var self = this;
-	    const showSelectAll = !!this.options.get('showSelectAll');
-	    const multiple = !!this.options.get('multiple');
+	    const showSelectAll = !!this.options.get('showSelectAll') && !!this.options.get('multiple');;
 	    
-	    this.$element.on('change.select2', function () {
-		self.dataAdapter.current(function (data) {
-		    self.trigger('selection:update', {
-			data: data
-		    });
-		});
-	    });
-
-	   if (multiple && showSelectAll) {
-		   this.$element.on('change.select2', function () {
-			self.dataAdapter.current(function (data) {
-			    self.trigger('results:append', {
-				data: data,
-				query: {_type: 'query'}
-			    });
+	    if (showSelectAll) {
+		this.$element.on('change.select2', function () {
+		    self.dataAdapter.current(function (data) {
+			self.trigger('selection:update', {
+			    data: data
+			});
+			self.trigger('results:append', {
+			    data: data,
+			    query: {_type: 'query'}
 			});
 		    });
-	   }
+		});
+	    } else {
+		this.$element.on('change.select2', function () {
+		    self.dataAdapter.current(function (data) {
+			self.trigger('selection:update', {
+			    data: data
+			});
+		    });
+		});
+	    }
+
 	    this._sync = Utils.bind(this._syncAttributes, this);
 
 	    if (this.$element[0].attachEvent) {

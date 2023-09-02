@@ -14,10 +14,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git://github.com/select2/select2.git"
+    "url": "git://github.com/MikhailShmakovDev/select2.git"
   },
   "bugs": {
-    "url": "https://github.com/select2/select2/issues"
+    "url": "https://github.com/MikhailShmakovDev/select2/issues"
   },
   "keywords": [
     "select",

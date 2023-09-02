@@ -8,6 +8,7 @@ define([
   }
 
   HidePlaceholder.prototype.append = function (decorated, data) {
+    data.results = data.results ? data.results : data;
     data.results = this.removePlaceholder(data.results);
 
     decorated.call(this, data);
